@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The AEO Showdown — HubSpot Sales Enablement</title>
+  <meta name="description" content="A live sales enablement game for HubSpot AEO training." />
+  <!-- Tailwind (Play CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React 18 -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- Babel standalone to transpile JSX in-browser -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    html, body { margin: 0; padding: 0; background: #0D1F23; height: 100%; overflow: hidden; }
+    body { font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif; }
+    #root { height: 100%; }
+    #loading {
+      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: #0D1F23; color: #F5F1E8; font-family: ui-sans-serif, system-ui, sans-serif;
+    }
+    #loading.hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div id="loading">Loading the game…</div>
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="react">
+    const { useState, useEffect, useRef } = React;
+
+// React hooks pulled from global React object below
+
+// ─────────────────────────────────────────────────────────────
+// GAME CONTENT
+// ─────────────────────────────────────────────────────────────
+const CATEGORIES = [
+  "The Shift",
+  "The Numbers",
+  "Discovery & Pitch",
+  "Objections",
+  "The Product",
+];
+const VALUES = [100, 200, 300, 400, 500];
+
+const QUESTIONS = {
+  "The Shift": {
+    100: {
+      q: "What does AEO stand for, and in one sentence, what does it mean?",
+      a: "Answer Engine Optimization — the practice of optimizing your brand and content to appear in AI-generated answers on platforms like ChatGPT, Perplexity, and Gemini.",
+    },
+    200: {
+      q: "When introducing AEO on a call, what should reps NEVER lead with — and what should they lead with instead?",
+      a: "Don't lead with the product pitch (don't open with 'let me tell you about AEO'). Lead with the PROBLEM first: buyers are increasingly going to ChatGPT and Gemini instead of Google, and if AI isn't recommending the prospect's brand, their lead flow is quietly at risk — and they probably don't even know it's happening. Only once the problem lands do you introduce AEO as the solution.",
+    },
+    300: {
+      q: "Recite the AEO master one-liner, word for word.",
+      a: "\"Buyers are asking AI for recommendations. HubSpot can help you ensure your brand is the answer.\"",
+    },
+    400: {
+      q: "Why is a great SEO strategy NOT enough to win in AEO?",
+      a: "Answer engines don't just pull from your website — they draw from Reddit, YouTube, review sites, LinkedIn, news, and competitor comparisons. Your owned website is only ~8% of what AI considers. The playbook is different: build a broader presence across the sources answer engines trust.",
+    },
+    500: {
+      q: "How has the way buyers research and discover brands changed because of AI — and what does that change mean for the quality of traffic reaching a prospect's website?",
+      a: "Before AI: buyers would Google a question, click through a bunch of links, and compare options themselves. That meant LOTS of site traffic — but most of it was early-stage, not ready to buy. Now: buyers ask ChatGPT (or Gemini, or Perplexity) directly, get a curated recommendation, and arrive at a website already having done their research. Fewer visitors — but they're pre-qualified and much closer to buying. That's why AI-referred traffic converts at roughly 3x the rate of organic.",
+    },
+  },
+  "The Numbers": {
+    100: {
+      q: "What percentage of Google searches now end with zero clicks?",
+      a: "60% — AI is answering in place of the user visiting a site.",
+    },
+    200: {
+      q: "How many weekly users are now searching on ChatGPT?",
+      a: "900 million weekly users.",
+    },
+    300: {
+      q: "When a visitor clicks through to a website from an AI answer engine like ChatGPT, how much more likely are they to convert compared to a typical visitor who came from a Google search — and why should a prospect care?",
+      a: "About 3x more likely to convert. Prospects should care because these are their highest-intent buyers — they've already done research through AI and arrive ready to buy. If the prospect's brand isn't being recommended by AI, they're not just losing some incremental traffic — they're losing their MOST valuable leads.",
+    },
+    400: {
+      q: "What percentage of what AI considers about a brand lives OFF the website — and name at least three of those off-site source types.",
+      a: "92% lives off the website. Any three of: Reddit, LinkedIn, review sites, YouTube, earned media / news, affiliate sites, peer sites, competitor comparisons.",
+    },
+    500: {
+      q: "Put the four key numbers together into one story you'd tell a prospect: 60% zero-click searches, 900M weekly ChatGPT users, 3x conversion for AI-referred traffic, and 92% of AI citations coming from off-site sources. What's the overall message?",
+      a: "The shift is already here — almost a billion people a week are searching with ChatGPT alone, and most of those searches never end in a click. But the clicks that DO happen are worth more — AI-referred visitors convert at roughly 3x organic. And winning those AI answers is NOT about your website — 92% of what AI uses to recommend brands lives off-site (Reddit, LinkedIn, reviews, YouTube, earned media). Bottom line for the prospect: the old SEO playbook alone can't win this, and the brands that move first will own their category in AI answers.",
+    },
+  },
+  "Discovery & Pitch": {
+    100: {
+      q: "Give one example of a strong opening discovery question you could use to introduce AEO on a sales call.",
+      a: "Any of: (1) 'Have you seen a drop in organic traffic over the last 12–24 months?' (2) 'Do you know how often your buyers are asking ChatGPT or Gemini for recommendations in your category?' (3) 'If I asked ChatGPT to recommend the top [their category] today, would your brand come up?' The goal: get them thinking about AI's role in buyer research before you ever mention the product.",
+    },
+    200: {
+      q: "What free tool should you pull up LIVE on a discovery call to show a prospect how AI sees their brand — and where do you find it?",
+      a: "The free HubSpot AEO Grader at hubspot.com/ai-search-grader. 60 seconds to show them how ChatGPT, Gemini, and Perplexity see their brand vs. competitors.",
+    },
+    300: {
+      q: "When walking the prospect through the free AEO Grader live on a call, what should you DO — and what should you NOT do?",
+      a: "DO: Walk through the overall score for each platform (ChatGPT, Gemini, Perplexity). Keep it simple. DON'T: Dive into specifics on the call. Instead, offer to email the full report and book a follow-up to walk it through together.",
+    },
+    400: {
+      q: "What's a general framework reps can use to guide an AEO discovery conversation — from opening the conversation to introducing the solution?",
+      a: "A strong general flow: (1) OPEN with a discovery question about their current marketing, AI visibility, or organic traffic trends. (2) MEET them where they are — validate if they've already noticed a change, or pivot (don't argue) if they think they're fine. (3) FRAME the problem with data (e.g., 60% zero-click, 3x conversion, 92% off-site). (4) SHOW them what AI actually sees today — a live demo of the free AEO Grader makes it real. (5) CONNECT the dots: AEO surfaces the gaps, HubSpot helps them close it.",
+    },
+    500: {
+      q: "Once AEO has shown a prospect where their brand visibility gaps are, how do you position HubSpot as the tool to FIX those gaps — not just diagnose them?",
+      a: "AEO is the diagnostic: it tells a prospect where ChatGPT, Gemini, and Perplexity are NOT recommending them, and which content gaps are causing it. But data alone doesn't close the gap — execution does. That's where HubSpot comes in: the recommendations connect directly to HubSpot's content tools (blogs, social, Content Remix, AI Blog, Breeze Social), so the prospect can act on the insights without switching platforms. Frame it simply: 'Most AEO tools show you the problem and leave you to figure it out. HubSpot shows you the problem AND gives you the tools to fix it — all in one place.'",
+    },
+  },
+  Objections: {
+    100: {
+      q: "Prospect says: 'We're already crushing SEO — we're covered.' How do you respond without arguing?",
+      a: "Pivot, don't argue. 'Your website is only 5–8% of what AI considers. Winning on Google doesn't mean winning on ChatGPT — how are you showing up on Reddit, LinkedIn, reviews, YouTube?' Position SEO and AEO as complementary, not competing.",
+    },
+    200: {
+      q: "Prospect pushes back: 'How can HubSpot influence off-site content like Reddit or LinkedIn? You don't own those platforms.' What's your answer?",
+      a: "HubSpot doesn't own Reddit or LinkedIn — it produces the content that lives there. AEO finds the gap; Marketing Hub fills it via blogs, social posts, and PR angles using tools like Content Remix, AI Blog, and Breeze Social.",
+    },
+    300: {
+      q: "A prospect says: 'We just redesigned our website to make it AI-friendly. Aren't we already covered for AEO?' How do you respond?",
+      a: "A redesigned, AI-friendly website is a great foundation — but their website is only about 5–15% of what AI actually considers when recommending a brand. The other 85–95% lives OFF their site: Reddit, LinkedIn, review sites, YouTube, news coverage, competitor comparisons. A redesign alone can't influence any of that. AEO shows where the gaps are across ALL those sources, and HubSpot helps fill them. Baseline AEO now so they can actually measure their redesign's impact when it launches.",
+    },
+    400: {
+      q: "A prospect says: 'Other AEO tools look cheaper and basically do the same thing. Why would I choose HubSpot?' Walk through the three C's — Context, Content, and Confidence — that make HubSpot's offering different.",
+      a: "CONTEXT: Your CRM data informs AEO prompts, so recommendations are grounded in your actual business — your customers, your industry, your product. Other tools make you start from scratch. CONTENT: You go from insight to action in one platform. AEO surfaces the gaps, and Marketing Hub's content tools (Content Remix, AI Blog, Breeze Social) let you act on them without switching tools — most AEO tools show you the problem and leave you on your own. CONFIDENCE: HubSpot AEO is built on the XFunnel playbook that HubSpot proved on its own marketing before productizing it — it's not a guess.",
+    },
+    500: {
+      q: "Prospect says: 'Once-per-day data collection isn't enough for active optimization — my partners told me so.' How do you respond without being defensive?",
+      a: "Daily prompt runs are the current industry standard and provide sufficient insights for effective AEO. Running the same prompt across 3 engines daily gives you confident weekly averages and strong trend data over several weeks. HubSpot is actively exploring paid options for additional daily runs in the future.",
+    },
+  },
+  "The Product": {
+    100: {
+      q: "Which three answer engines does HubSpot AEO currently track?",
+      a: "ChatGPT, Perplexity, and Gemini — prompts run daily against all three on the paid plan. (Free trial tracks ChatGPT only.)",
+    },
+    200: {
+      q: "What's included in the free trial of HubSpot AEO?",
+      a: "10 prompts on ChatGPT, for 28 days, up to 280 answers per month — no commitment, no credit card required.",
+    },
+    300: {
+      q: "A prospect asks what they get with the standalone HubSpot AEO product. Walk them through the specifics — cover all five: (a) price per month, (b) how many prompts, (c) which engines, (d) how many total answers per month, and (e) how many users are included.",
+      a: "(a) $50/month — or $45/month if billed annually. (b) 25 prompts, run daily. (c) Three engines: ChatGPT, Perplexity, and Gemini. (d) Up to 2,500 answers per month. (e) 2 users included. Worth adding: no Marketing Hub subscription is required — it's fully standalone.",
+    },
+    400: {
+      q: "Name the four core features of HubSpot AEO.",
+      a: "(1) Brand Visibility & Sentiment Analysis — measures how often and how positively the brand appears in AI answers. (2) Prompt Tracking & Suggestions — tracks prompts daily and suggests new ones (CRM-informed for MH customers). (3) Competitor & Citation Analysis — Share of Voice vs. competitors, plus which sources are driving citations. (4) Recommendations — specific, prioritized actions to improve visibility.",
+    },
+    500: {
+      q: "Walk through AEO pricing inside Marketing Hub: what does Pro include, what does Enterprise include, how do customers add more capacity if they outgrow their tier, and what's the pricing-model catch?",
+      a: "MH PRO: 25 prompts, up to 2,500 answers/month, all 3 engines (ChatGPT, Perplexity, Gemini) — included at no extra cost. MH ENTERPRISE: 50 prompts, up to 5,000 answers/month, all 3 engines — included at no extra cost. MORE CAPACITY: Answer Packs at $20/month each, which add 10 more prompts and 1,000 more answers per month. Buy as many packs as needed. THE CATCH: Customers must be on the Seats pricing model to access AEO in Marketing Hub.",
+    },
+  },
+};
+
+// ─────────────────────────────────────────────────────────────
+// THEME
+// ─────────────────────────────────────────────────────────────
+const T = {
+  bg: "#0D1F23",
+  panel: "#142B30",
+  panelSoft: "#1A343B",
+  tile: "#1F3A41",
+  tileHover: "#2A4E57",
+  used: "#0F2529",
+  cream: "#F5F1E8",
+  creamDim: "#C9BFAE",
+  orange: "#FF5C35",
+  orangeLight: "#FF7A59",
+  teal: "#00BDA5",
+  muted: "#5A7279",
+  mutedText: "#8DA3AB",
+};
+
+const fontDisplay = "'Fraunces', ui-serif, Georgia, serif";
+const fontBody = "'DM Sans', ui-sans-serif, system-ui, sans-serif";
+const fontMono = "'JetBrains Mono', ui-monospace, monospace";
+
+// ─────────────────────────────────────────────────────────────
+// MAIN COMPONENT
+// ─────────────────────────────────────────────────────────────
+function AEOSalesGame() {
+  const [phase, setPhase] = useState("setup"); // setup | board | question | complete
+  const [teams, setTeams] = useState([]);
+  const [currentTeamIdx, setCurrentTeamIdx] = useState(0);
+  const [usedTiles, setUsedTiles] = useState({}); // "cat-val" -> true
+  const [activeTile, setActiveTile] = useState(null);
+  const [timerSec, setTimerSec] = useState(45);
+  const [timerOn, setTimerOn] = useState(false);
+  const [answerShown, setAnswerShown] = useState(false);
+  const [reviewMode, setReviewMode] = useState(false);
+  const [newTeamName, setNewTeamName] = useState("");
+  const [resetConfirm, setResetConfirm] = useState(false);
+  const timerRef = useRef(null);
+
+  // Load Google Fonts once
+  useEffect(() => {
+    const pre1 = document.createElement("link");
+    pre1.rel = "preconnect";
+    pre1.href = "https://fonts.googleapis.com";
+    const pre2 = document.createElement("link");
+    pre2.rel = "preconnect";
+    pre2.href = "https://fonts.gstatic.com";
+    pre2.crossOrigin = "anonymous";
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href =
+      "https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,700;0,9..144,900;1,9..144,600&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@500;700&display=swap";
+    document.head.appendChild(pre1);
+    document.head.appendChild(pre2);
+    document.head.appendChild(link);
+    return () => {
+      try {
+        document.head.removeChild(pre1);
+        document.head.removeChild(pre2);
+        document.head.removeChild(link);
+      } catch (e) {}
+    };
+  }, []);
+
+  // Timer tick
+  useEffect(() => {
+    if (!timerOn) return;
+    if (timerSec <= 0) {
+      setTimerOn(false);
+      return;
+    }
+    timerRef.current = setTimeout(() => setTimerSec((s) => s - 1), 1000);
+    return () => clearTimeout(timerRef.current);
+  }, [timerOn, timerSec]);
+
+  // ─── Actions ───
+  function addTeam() {
+    const name = newTeamName.trim();
+    if (!name || teams.length >= 8) return;
+    setTeams([...teams, { id: Date.now() + Math.random(), name, score: 0 }]);
+    setNewTeamName("");
+  }
+  function removeTeam(id) {
+    setTeams(teams.filter((t) => t.id !== id));
+  }
+  function startGame() {
+    if (teams.length < 2) return;
+    setPhase("board");
+    setCurrentTeamIdx(0);
+  }
+  function selectTile(cat, val) {
+    const key = `${cat}-${val}`;
+    const q = QUESTIONS[cat][val];
+    setActiveTile({ category: cat, value: val, question: q.q, answer: q.a });
+    setTimerSec(45);
+    setTimerOn(false);
+    if (usedTiles[key]) {
+      // Review mode — show Q + A, no scoring controls
+      setReviewMode(true);
+      setAnswerShown(true);
+    } else {
+      setReviewMode(false);
+      setAnswerShown(false);
+    }
+    setPhase("question");
+  }
+  function revealAnswer() {
+    setAnswerShown(true);
+    setTimerOn(false);
+  }
+  function mark(correct) {
+    const key = `${activeTile.category}-${activeTile.value}`;
+    const newUsed = { ...usedTiles, [key]: true };
+    setUsedTiles(newUsed);
+
+    if (correct) {
+      setTeams((prev) =>
+        prev.map((t, i) =>
+          i === currentTeamIdx ? { ...t, score: t.score + activeTile.value } : t
+        )
+      );
+      // same team keeps turn
+    } else {
+      setCurrentTeamIdx((idx) => (idx + 1) % teams.length);
+    }
+
+    setActiveTile(null);
+    setAnswerShown(false);
+    setTimerOn(false);
+    setTimerSec(45);
+    setReviewMode(false);
+
+    if (Object.keys(newUsed).length >= 25) {
+      setPhase("complete");
+    } else {
+      setPhase("board");
+    }
+  }
+  function cancelQuestion() {
+    setActiveTile(null);
+    setAnswerShown(false);
+    setTimerOn(false);
+    setTimerSec(45);
+    setReviewMode(false);
+    setPhase("board");
+  }
+  function resetAll() {
+    setPhase("setup");
+    setTeams([]);
+    setCurrentTeamIdx(0);
+    setUsedTiles({});
+    setActiveTile(null);
+    setTimerSec(45);
+    setTimerOn(false);
+    setAnswerShown(false);
+    setReviewMode(false);
+    setNewTeamName("");
+    setResetConfirm(false);
+  }
+
+  // ─── Render ───
+  return (
+    <div
+      className="min-h-screen w-full relative"
+      style={{
+        background: T.bg,
+        color: T.cream,
+        fontFamily: fontBody,
+      }}
+    >
+      {/* Atmosphere — radial glow + grain */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: `radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255,92,53,0.12), transparent 60%)`,
+        }}
+      />
+      <div
+        className="absolute inset-0 pointer-events-none opacity-[0.035] mix-blend-overlay"
+        style={{
+          backgroundImage:
+            "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+        }}
+      />
+
+      <div className="relative">
+        {phase === "setup" && (
+          <Setup
+            teams={teams}
+            newTeamName={newTeamName}
+            setNewTeamName={setNewTeamName}
+            addTeam={addTeam}
+            removeTeam={removeTeam}
+            startGame={startGame}
+          />
+        )}
+        {phase === "board" && (
+          <Board
+            teams={teams}
+            currentTeamIdx={currentTeamIdx}
+            usedTiles={usedTiles}
+            selectTile={selectTile}
+            onReset={() => setResetConfirm(true)}
+          />
+        )}
+        {phase === "question" && (
+          <Question
+            tile={activeTile}
+            team={teams[currentTeamIdx]}
+            timerSec={timerSec}
+            timerOn={timerOn}
+            answerShown={answerShown}
+            reviewMode={reviewMode}
+            onStartTimer={() => setTimerOn(true)}
+            onPauseTimer={() => setTimerOn(false)}
+            onReveal={revealAnswer}
+            onMark={mark}
+            onCancel={cancelQuestion}
+          />
+        )}
+        {phase === "complete" && <Complete teams={teams} onReset={resetAll} />}
+      </div>
+
+      {/* Reset confirm modal */}
+      {resetConfirm && (
+        <ConfirmModal
+          title="Reset the game?"
+          body="This clears all teams, scores, and tiles used. A new manager can start fresh."
+          confirmLabel="Reset game"
+          onConfirm={resetAll}
+          onCancel={() => setResetConfirm(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// SETUP SCREEN
+// ─────────────────────────────────────────────────────────────
+function Setup({ teams, newTeamName, setNewTeamName, addTeam, removeTeam, startGame }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center px-6 py-12">
+      <div className="w-full max-w-3xl">
+        {/* Brand mark */}
+        <div className="flex items-center gap-3 mb-10">
+          <div
+            className="w-3 h-3 rounded-full"
+            style={{ background: T.orange }}
+          />
+          <span
+            className="uppercase tracking-[0.2em] text-xs"
+            style={{ fontFamily: fontMono, color: T.orange, letterSpacing: "0.25em" }}
+          >
+            HubSpot · Sales Enablement
+          </span>
+        </div>
+
+        {/* Title */}
+        <h1
+          className="text-6xl md:text-7xl leading-[0.95] mb-4"
+          style={{ fontFamily: fontDisplay, fontWeight: 500, letterSpacing: "-0.02em" }}
+        >
+          The AEO <em style={{ fontStyle: "italic", color: T.orange }}>Showdown</em>
+        </h1>
+        <p
+          className="text-lg md:text-xl mb-12 max-w-2xl"
+          style={{ color: T.creamDim, lineHeight: 1.5 }}
+        >
+          A live training game for sales teams. Pitch the problem. Handle the objection.
+          Close with confidence. Five categories, twenty-five questions, one winning team.
+        </p>
+
+        {/* Team entry card */}
+        <div
+          className="rounded-2xl p-8 mb-8"
+          style={{
+            background: T.panel,
+            boxShadow: "0 1px 0 rgba(255,255,255,0.03) inset, 0 20px 60px rgba(0,0,0,0.35)",
+          }}
+        >
+          <div className="flex items-center justify-between mb-5">
+            <h2
+              className="text-2xl"
+              style={{ fontFamily: fontDisplay, fontWeight: 600 }}
+            >
+              Set up teams
+            </h2>
+            <span
+              className="text-xs uppercase tracking-widest"
+              style={{ fontFamily: fontMono, color: T.mutedText }}
+            >
+              {teams.length} / 8
+            </span>
+          </div>
+
+          {/* Input row */}
+          <div className="flex gap-3 mb-5">
+            <input
+              type="text"
+              placeholder="Team name (e.g., The Closers)"
+              value={newTeamName}
+              onChange={(e) => setNewTeamName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") addTeam();
+              }}
+              maxLength={28}
+              className="flex-1 rounded-lg px-4 py-3 outline-none transition"
+              style={{
+                background: T.panelSoft,
+                color: T.cream,
+                border: `1px solid ${T.muted}`,
+                fontFamily: fontBody,
+                fontSize: "16px",
+              }}
+            />
+            <button
+              onClick={addTeam}
+              disabled={!newTeamName.trim() || teams.length >= 8}
+              className="px-5 py-3 rounded-lg font-semibold transition disabled:opacity-40"
+              style={{
+                background: T.orange,
+                color: T.cream,
+                fontFamily: fontBody,
+              }}
+            >
+              Add team
+            </button>
+          </div>
+
+          {/* Team chips */}
+          {teams.length === 0 ? (
+            <div
+              className="text-center py-10 text-sm rounded-lg border border-dashed"
+              style={{ color: T.mutedText, borderColor: T.muted }}
+            >
+              Add at least 2 teams to start the game.
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {teams.map((t) => (
+                <div
+                  key={t.id}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full group"
+                  style={{
+                    background: T.panelSoft,
+                    border: `1px solid ${T.muted}`,
+                  }}
+                >
+                  <span style={{ color: T.cream, fontWeight: 500 }}>{t.name}</span>
+                  <button
+                    onClick={() => removeTeam(t.id)}
+                    className="w-5 h-5 rounded-full flex items-center justify-center transition hover:opacity-100 opacity-60"
+                    style={{ background: T.bg, color: T.creamDim, fontSize: "12px" }}
+                    aria-label={`Remove ${t.name}`}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Start button */}
+        <button
+          onClick={startGame}
+          disabled={teams.length < 2}
+          className="w-full py-5 rounded-xl text-xl font-semibold transition disabled:opacity-30 disabled:cursor-not-allowed"
+          style={{
+            background: T.orange,
+            color: T.cream,
+            fontFamily: fontBody,
+            boxShadow:
+              teams.length >= 2
+                ? "0 10px 30px rgba(255,92,53,0.35), 0 2px 0 rgba(255,255,255,0.08) inset"
+                : "none",
+          }}
+        >
+          Start the game →
+        </button>
+
+        {/* Footer */}
+        <p
+          className="mt-8 text-xs text-center uppercase tracking-[0.2em]"
+          style={{ fontFamily: fontMono, color: T.mutedText }}
+        >
+          Designed to be screen-shared live · 6–10 reps per team
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// BOARD SCREEN
+// ─────────────────────────────────────────────────────────────
+function Board({ teams, currentTeamIdx, usedTiles, selectTile, onReset }) {
+  const tilesUsed = Object.keys(usedTiles).length;
+  const tilesTotal = 25;
+  const currentTeam = teams[currentTeamIdx];
+
+  return (
+    <div className="h-screen flex flex-col px-6 py-4 md:px-10 md:py-5 overflow-hidden">
+      {/* Top bar */}
+      <div className="flex items-center justify-between mb-3 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-2.5 h-2.5 rounded-full" style={{ background: T.orange }} />
+          <span
+            className="uppercase tracking-[0.2em] text-xs"
+            style={{ fontFamily: fontMono, color: T.orange }}
+          >
+            The AEO Showdown
+          </span>
+        </div>
+        <div className="flex items-center gap-6">
+          <span
+            className="text-xs uppercase tracking-widest"
+            style={{ fontFamily: fontMono, color: T.mutedText }}
+          >
+            {tilesUsed} / {tilesTotal} answered
+          </span>
+          <button
+            onClick={onReset}
+            className="text-xs uppercase tracking-widest px-3 py-1.5 rounded-md transition"
+            style={{
+              fontFamily: fontMono,
+              color: T.mutedText,
+              border: `1px solid ${T.muted}`,
+            }}
+          >
+            Reset
+          </button>
+        </div>
+      </div>
+
+      {/* Scoreboard */}
+      <div className="flex flex-wrap gap-2 md:gap-3 mb-3 flex-shrink-0">
+        {teams.map((t, i) => {
+          const isActive = i === currentTeamIdx;
+          return (
+            <div
+              key={t.id}
+              className="flex-1 min-w-[150px] rounded-xl px-3 py-2 md:px-4 md:py-2.5 transition-all"
+              style={{
+                background: isActive ? T.orange : T.panel,
+                border: `1px solid ${isActive ? T.orange : T.muted}`,
+                boxShadow: isActive
+                  ? "0 10px 30px rgba(255,92,53,0.25)"
+                  : "none",
+              }}
+            >
+              <div
+                className="text-[10px] uppercase tracking-[0.2em] mb-1"
+                style={{
+                  fontFamily: fontMono,
+                  color: isActive ? "rgba(255,255,255,0.8)" : T.mutedText,
+                }}
+              >
+                {isActive ? "Up now" : "Team"}
+              </div>
+              <div className="flex items-baseline justify-between gap-2">
+                <span
+                  className="truncate text-lg"
+                  style={{
+                    fontWeight: 600,
+                    color: isActive ? T.cream : T.cream,
+                  }}
+                >
+                  {t.name}
+                </span>
+                <span
+                  className="text-xl"
+                  style={{
+                    fontFamily: fontMono,
+                    fontWeight: 700,
+                    color: isActive ? T.cream : T.orange,
+                  }}
+                >
+                  {t.score}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Turn indicator */}
+      <div className="mb-3 text-center flex-shrink-0">
+        <span
+          className="inline-block text-base md:text-lg italic"
+          style={{ fontFamily: fontDisplay, color: T.creamDim }}
+        >
+          <span style={{ color: T.orange, fontStyle: "normal", fontWeight: 600 }}>
+            {currentTeam?.name}
+          </span>{" "}
+          — choose a tile.
+        </span>
+      </div>
+
+      {/* Board grid */}
+      <div
+        className="grid gap-2 md:gap-3 flex-1 min-h-0"
+        style={{
+          gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+          gridTemplateRows: "auto repeat(5, 1fr)",
+        }}
+      >
+        {/* Category headers */}
+        {CATEGORIES.map((cat) => (
+          <div
+            key={cat}
+            className="rounded-xl px-2 py-3 md:px-3 md:py-4 text-center flex items-center justify-center"
+            style={{
+              background: T.orange,
+              color: T.cream,
+            }}
+          >
+            <div
+              className="text-sm md:text-lg lg:text-xl leading-tight"
+              style={{
+                fontFamily: fontDisplay,
+                fontWeight: 700,
+                letterSpacing: "-0.01em",
+              }}
+            >
+              {cat}
+            </div>
+          </div>
+        ))}
+        {/* Tiles */}
+        {VALUES.map((val) =>
+          CATEGORIES.map((cat) => {
+            const key = `${cat}-${val}`;
+            const used = !!usedTiles[key];
+            return (
+              <button
+                key={key}
+                onClick={() => selectTile(cat, val)}
+                className="rounded-xl transition-all duration-200 flex items-center justify-center group w-full h-full"
+                style={{
+                  background: used ? T.used : T.tile,
+                  border: `1px solid ${used ? T.muted : T.tileHover}`,
+                  color: used ? T.muted : T.orangeLight,
+                  fontFamily: fontMono,
+                  fontWeight: 700,
+                  fontSize: "clamp(22px, min(3vw, 7vh), 48px)",
+                  cursor: "pointer",
+                  boxShadow: used
+                    ? "none"
+                    : "0 1px 0 rgba(255,255,255,0.05) inset",
+                }}
+                title={used ? "Review this question" : `Select $${val}`}
+                onMouseEnter={(e) => {
+                  if (!used) {
+                    e.currentTarget.style.background = T.tileHover;
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                  } else {
+                    e.currentTarget.style.background = "#142B30";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!used) {
+                    e.currentTarget.style.background = T.tile;
+                    e.currentTarget.style.transform = "translateY(0)";
+                  } else {
+                    e.currentTarget.style.background = T.used;
+                  }
+                }}
+              >
+                {used ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <span style={{ fontSize: "clamp(16px, 2.5vh, 22px)", color: T.muted }}>✓</span>
+                    <span
+                      style={{
+                        fontSize: "clamp(9px, 1.3vh, 11px)",
+                        fontFamily: fontMono,
+                        color: T.muted,
+                        letterSpacing: "0.2em",
+                      }}
+                    >
+                      REVIEW
+                    </span>
+                  </div>
+                ) : (
+                  <>${val}</>
+                )}
+              </button>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// QUESTION SCREEN
+// ─────────────────────────────────────────────────────────────
+function Question({
+  tile,
+  team,
+  timerSec,
+  timerOn,
+  answerShown,
+  reviewMode,
+  onStartTimer,
+  onPauseTimer,
+  onReveal,
+  onMark,
+  onCancel,
+}) {
+  const pct = (timerSec / 45) * 100;
+  const timerColor =
+    timerSec <= 10 ? T.orange : timerSec <= 20 ? T.orangeLight : T.teal;
+  const timerPulse = timerOn && timerSec <= 10;
+
+  return (
+    <div className="h-screen flex flex-col px-6 py-4 md:px-10 md:py-5 overflow-hidden">
+      {/* Top meta row */}
+      <div className="flex items-center justify-between mb-4 flex-shrink-0">
+        <div>
+          <div
+            className="text-xs uppercase tracking-[0.2em] mb-2"
+            style={{ fontFamily: fontMono, color: T.mutedText }}
+          >
+            Category
+          </div>
+          <div
+            className="text-2xl md:text-3xl"
+            style={{ fontFamily: fontDisplay, fontWeight: 600 }}
+          >
+            {tile.category}
+          </div>
+        </div>
+        <div className="text-center">
+          <div
+            className="text-xs uppercase tracking-[0.2em] mb-2"
+            style={{ fontFamily: fontMono, color: T.mutedText }}
+          >
+            Value
+          </div>
+          <div
+            className="text-4xl md:text-5xl"
+            style={{ fontFamily: fontMono, color: T.orange, fontWeight: 700 }}
+          >
+            ${tile.value}
+          </div>
+        </div>
+        <div className="text-right">
+          <div
+            className="text-xs uppercase tracking-[0.2em] mb-2"
+            style={{ fontFamily: fontMono, color: T.mutedText }}
+          >
+            {reviewMode ? "Mode" : "Answering"}
+          </div>
+          <div
+            className="text-2xl md:text-3xl truncate max-w-[280px]"
+            style={{
+              fontFamily: fontDisplay,
+              fontWeight: 600,
+              color: reviewMode ? T.teal : T.cream,
+              fontStyle: reviewMode ? "italic" : "normal",
+            }}
+          >
+            {reviewMode ? "Reviewing" : team?.name}
+          </div>
+        </div>
+      </div>
+
+      {/* Timer — hidden in review mode */}
+      {!reviewMode && (
+        <div className="mb-4 flex-shrink-0">
+          <div className="flex items-center justify-center mb-3">
+            <div
+              className="text-7xl md:text-8xl tabular-nums transition-colors"
+              style={{
+                fontFamily: fontMono,
+                fontWeight: 700,
+                color: timerColor,
+                textShadow: timerPulse
+                  ? `0 0 30px ${T.orange}`
+                  : "none",
+                animation: timerPulse ? "pulse 1s ease-in-out infinite" : "none",
+              }}
+            >
+              0:{String(timerSec).padStart(2, "0")}
+            </div>
+          </div>
+          {/* Progress bar */}
+          <div
+            className="h-1.5 rounded-full overflow-hidden mx-auto max-w-4xl"
+            style={{ background: T.panelSoft }}
+          >
+            <div
+              className="h-full transition-all"
+              style={{
+                width: `${pct}%`,
+                background: timerColor,
+                transition: "width 1s linear, background-color 0.3s",
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Review banner — shown only in review mode */}
+      {reviewMode && (
+        <div className="mx-auto max-w-5xl w-full mb-4 flex-shrink-0">
+          <div
+            className="rounded-xl px-5 py-3 flex items-center justify-center gap-3"
+            style={{
+              background: "rgba(0,189,165,0.08)",
+              border: `1px solid ${T.teal}`,
+            }}
+          >
+            <span
+              className="text-xs uppercase tracking-[0.25em]"
+              style={{ fontFamily: fontMono, color: T.teal }}
+            >
+              Review mode
+            </span>
+            <span
+              style={{ color: T.creamDim, fontSize: "14px" }}
+            >
+              This tile has already been played — scoring is disabled.
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Question card */}
+      <div
+        className="rounded-2xl px-6 py-6 md:px-10 md:py-8 mx-auto max-w-5xl w-full mb-4 flex-1 min-h-0 overflow-auto"
+        style={{
+          background: T.panel,
+          boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
+        }}
+      >
+        <div
+          className="text-xs uppercase tracking-[0.2em] mb-4"
+          style={{ fontFamily: fontMono, color: T.orange }}
+        >
+          Question
+        </div>
+        <p
+          className="text-2xl md:text-3xl lg:text-4xl leading-[1.35]"
+          style={{ fontFamily: fontDisplay, fontWeight: 500, color: T.cream }}
+        >
+          {tile.question}
+        </p>
+
+        {/* Answer reveal */}
+        {answerShown && (
+          <div
+            className="mt-8 pt-8 animate-[fadeIn_0.4s_ease-out]"
+            style={{ borderTop: `1px solid ${T.muted}` }}
+          >
+            <div
+              className="text-xs uppercase tracking-[0.2em] mb-4"
+              style={{ fontFamily: fontMono, color: T.teal }}
+            >
+              Answer
+            </div>
+            <p
+              className="text-lg md:text-xl leading-[1.6]"
+              style={{ color: T.cream }}
+            >
+              {tile.answer}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Controls */}
+      <div className="mx-auto max-w-5xl w-full flex flex-wrap gap-3 justify-between items-center flex-shrink-0">
+        <button
+          onClick={onCancel}
+          className="px-4 py-3 rounded-lg text-sm uppercase tracking-widest transition"
+          style={{
+            fontFamily: fontMono,
+            color: T.mutedText,
+            border: `1px solid ${T.muted}`,
+          }}
+        >
+          ← Back to board
+        </button>
+
+        {!reviewMode && (
+          <div className="flex flex-wrap gap-3">
+            {!timerOn && timerSec === 45 && !answerShown && (
+              <button
+                onClick={onStartTimer}
+                className="px-6 py-3 rounded-lg font-semibold transition"
+                style={{
+                  background: T.teal,
+                  color: T.bg,
+                  fontFamily: fontBody,
+                }}
+              >
+                ▶ Start 45s timer
+              </button>
+            )}
+            {timerOn && (
+              <button
+                onClick={onPauseTimer}
+                className="px-6 py-3 rounded-lg font-semibold transition"
+                style={{
+                  background: T.panelSoft,
+                  color: T.cream,
+                  border: `1px solid ${T.muted}`,
+                  fontFamily: fontBody,
+                }}
+              >
+                ⏸ Pause
+              </button>
+            )}
+            {!timerOn && timerSec < 45 && !answerShown && (
+              <button
+                onClick={onStartTimer}
+                className="px-6 py-3 rounded-lg font-semibold transition"
+                style={{
+                  background: T.teal,
+                  color: T.bg,
+                  fontFamily: fontBody,
+                }}
+              >
+                ▶ Resume
+              </button>
+            )}
+            {!answerShown && (
+              <button
+                onClick={onReveal}
+                className="px-6 py-3 rounded-lg font-semibold transition"
+                style={{
+                  background: T.panelSoft,
+                  color: T.cream,
+                  border: `1px solid ${T.orange}`,
+                  fontFamily: fontBody,
+                }}
+              >
+                Reveal answer
+              </button>
+            )}
+            <button
+              onClick={() => onMark(false)}
+              className="px-6 py-3 rounded-lg font-semibold transition"
+              style={{
+                background: "transparent",
+                color: T.cream,
+                border: `1px solid ${T.muted}`,
+                fontFamily: fontBody,
+              }}
+            >
+              ✗ Incorrect
+            </button>
+            <button
+              onClick={() => onMark(true)}
+              className="px-6 py-3 rounded-lg font-semibold transition"
+              style={{
+                background: T.orange,
+                color: T.cream,
+                fontFamily: fontBody,
+                boxShadow: "0 10px 30px rgba(255,92,53,0.35)",
+              }}
+            >
+              ✓ Correct · +${tile.value}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Keyframes */}
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.85; transform: scale(1.03); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// COMPLETE SCREEN
+// ─────────────────────────────────────────────────────────────
+function Complete({ teams, onReset }) {
+  const sorted = [...teams].sort((a, b) => b.score - a.score);
+  const topScore = sorted[0]?.score;
+  const winners = sorted.filter((t) => t.score === topScore);
+  const isTie = winners.length > 1;
+
+  return (
+    <div className="min-h-screen flex items-center justify-center px-6 py-12">
+      <div className="w-full max-w-3xl text-center">
+        <div
+          className="uppercase tracking-[0.3em] text-xs mb-6"
+          style={{ fontFamily: fontMono, color: T.orange }}
+        >
+          Game Complete
+        </div>
+        <h1
+          className="text-6xl md:text-7xl leading-[0.95] mb-4"
+          style={{ fontFamily: fontDisplay, fontWeight: 500 }}
+        >
+          {isTie ? (
+            <>
+              It's a <em style={{ color: T.orange, fontStyle: "italic" }}>tie.</em>
+            </>
+          ) : (
+            <>
+              <em style={{ color: T.orange, fontStyle: "italic" }}>
+                {winners[0]?.name}
+              </em>{" "}
+              wins.
+            </>
+          )}
+        </h1>
+        <p className="text-lg mb-12" style={{ color: T.creamDim }}>
+          {isTie
+            ? `${winners.map((w) => w.name).join(" & ")} finished neck and neck at $${topScore}.`
+            : `Closed the pitch. Handled the objections. Owned the pricing.`}
+        </p>
+
+        {/* Standings */}
+        <div
+          className="rounded-2xl p-6 md:p-8 mb-10 text-left"
+          style={{ background: T.panel }}
+        >
+          <div
+            className="text-xs uppercase tracking-[0.2em] mb-5"
+            style={{ fontFamily: fontMono, color: T.mutedText }}
+          >
+            Final Standings
+          </div>
+          <div className="space-y-3">
+            {sorted.map((t, i) => {
+              const isWinner = t.score === topScore;
+              return (
+                <div
+                  key={t.id}
+                  className="flex items-center justify-between px-5 py-4 rounded-xl"
+                  style={{
+                    background: isWinner ? T.panelSoft : "transparent",
+                    border: `1px solid ${isWinner ? T.orange : T.muted}`,
+                  }}
+                >
+                  <div className="flex items-center gap-4">
+                    <span
+                      className="w-8 text-center text-xl"
+                      style={{
+                        fontFamily: fontMono,
+                        color: isWinner ? T.orange : T.mutedText,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {i + 1}
+                    </span>
+                    <span
+                      className="text-xl"
+                      style={{
+                        fontFamily: fontDisplay,
+                        fontWeight: 600,
+                        color: T.cream,
+                      }}
+                    >
+                      {t.name}
+                    </span>
+                  </div>
+                  <span
+                    className="text-2xl"
+                    style={{
+                      fontFamily: fontMono,
+                      fontWeight: 700,
+                      color: isWinner ? T.orange : T.creamDim,
+                    }}
+                  >
+                    ${t.score}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <button
+          onClick={onReset}
+          className="px-8 py-4 rounded-xl text-lg font-semibold transition"
+          style={{
+            background: T.orange,
+            color: T.cream,
+            fontFamily: fontBody,
+            boxShadow: "0 10px 30px rgba(255,92,53,0.35)",
+          }}
+        >
+          Play again →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// CONFIRM MODAL
+// ─────────────────────────────────────────────────────────────
+function ConfirmModal({ title, body, confirmLabel, onConfirm, onCancel }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center px-6"
+      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+    >
+      <div
+        className="max-w-md w-full rounded-2xl p-8"
+        style={{
+          background: T.panel,
+          boxShadow: "0 30px 80px rgba(0,0,0,0.5)",
+        }}
+      >
+        <h3
+          className="text-2xl mb-3"
+          style={{ fontFamily: fontDisplay, fontWeight: 600, color: T.cream }}
+        >
+          {title}
+        </h3>
+        <p className="mb-6" style={{ color: T.creamDim, lineHeight: 1.5 }}>
+          {body}
+        </p>
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={onCancel}
+            className="px-5 py-2.5 rounded-lg transition"
+            style={{
+              color: T.creamDim,
+              border: `1px solid ${T.muted}`,
+              fontFamily: fontBody,
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-5 py-2.5 rounded-lg font-semibold transition"
+            style={{
+              background: T.orange,
+              color: T.cream,
+              fontFamily: fontBody,
+            }}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<AEOSalesGame />);
+    requestAnimationFrame(() => {
+      const l = document.getElementById('loading');
+      if (l) l.classList.add('hidden');
+    });
+  </script>
+</body>
+</html>
